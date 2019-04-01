@@ -54,7 +54,8 @@ func (o *GlobalOptions) GetPass() string {
 				cmd.Stdout = buf
 				cmd.Stderr = buf
 				if err := cmd.Run(); err == nil {
-					passwd = strings.TrimSpace(buf.String())
+                    // Return the first line of the password
+					passwd = strings.TrimSpace(strings.Split(buf.String(), "\n")[0])
 				}
 			}
 		} else {
@@ -103,31 +104,8 @@ func (o *GlobalOptions) SetPass(passwd string) error {
 			return err
 		}
 	} else if o.PasswordSource.Value == "pass" {
-		if o.PasswordDirectory.Value != "" {
-			orig := os.Getenv("PASSWORD_STORE_DIR")
-			os.Setenv("PASSWORD_STORE_DIR", o.PasswordDirectory.Value)
-			defer os.Setenv("PASSWORD_STORE_DIR", orig)
-		}
-		if bin, err := exec.LookPath("pass"); err == nil {
-			log.Debugf("using %s", bin)
-			passName := o.keyName()
-			if passwd != "" {
-				in := bytes.NewBufferString(fmt.Sprintf("%s\n%s\n", passwd, passwd))
-				out := bytes.NewBufferString("")
-				cmd := exec.Command(bin, "insert", "--force", passName)
-				cmd.Stdin = in
-				cmd.Stdout = out
-				cmd.Stderr = out
-				if err := cmd.Run(); err != nil {
-					return fmt.Errorf("Failed to insert password: %s", out.String())
-				}
-			} else {
-				// clear the `pass` entry on empty password
-				if err := exec.Command(bin, "rm", "--force", passName).Run(); err != nil {
-					return fmt.Errorf("Failed to clear password for %s", passName)
-				}
-			}
-		}
+        // do not modify the password store
+        return nil
 	} else if o.PasswordSource.Value != "" {
 		return fmt.Errorf("Unknown password-source: %s", o.PasswordSource)
 	}
